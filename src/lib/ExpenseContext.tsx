@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { format, isSameDay } from 'date-fns';
 import { sq } from 'date-fns/locale';
 import { DollarSign, Filter, Calendar as CalendarIcon, Download, Trash2, AlertTriangle, X, Plus, Lock } from 'lucide-react';
-import { useExpenses, ExpenseCategory } from '../lib/ExpensesContext';
+import { useExpenses, ExpenseCategory } from './ExpenseContext';
 import { motion, AnimatePresence } from 'motion/react';
 
 const MONTHS = [
