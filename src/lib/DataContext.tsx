@@ -43,7 +43,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
   const [staff, setStaff] = useState<Staff[]>(() => {
     // Changed key to v2 to force refresh of staff data (including new image paths)
-    const saved = localStorage.getItem('salon_staff_v2');
+    const saved = localStorage.getItem('salon_staff_v3');
     return saved ? JSON.parse(saved) : INITIAL_STAFF;
   });
 
@@ -52,7 +52,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   }, [services]);
 
   useEffect(() => {
-    localStorage.setItem('salon_staff_v2', JSON.stringify(staff));
+    localStorage.setItem('salon_staff_v3', JSON.stringify(staff));
   }, [staff]);
 
   const addService = (newService: Omit<Service, 'id'>) => {
