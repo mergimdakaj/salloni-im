@@ -5,7 +5,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 
 import { format, isSameDay, addHours, startOfToday } from 'date-fns';
 import { sq } from 'date-fns/locale';
 
-import { useExpenses, ExpenseCategory } from '../lib/ExpensesContext';
+import { useExpenses, ExpenseCategory } from '../lib/ExpenseContext';
 import { useAppointments } from '../lib/AppointmentsContext';
 import { useData } from '../lib/DataContext';
 
