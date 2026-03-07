@@ -43,11 +43,7 @@ export default function StaffPage() {
         <div>
           <h1 className="text-6xl font-black uppercase italic tracking-tighter">Stafi</h1>
           <p className="text-xl font-bold text-gray-500 mt-2">Ekipi Profesional</p>
-          <div className="mt-4 bg-yellow-100 border-2 border-black p-4 text-sm font-bold max-w-2xl">
-            <p className="uppercase mb-2">📸 Udhëzim për Fotot (GitHub/Vercel):</p>
-            <p>Për të ndryshuar foton e një anëtari, ruani foton me emrin <code className="bg-black text-white px-1">staff-[ID].jpg</code> në folderin <code className="bg-black text-white px-1">public/images/staff/</code>.</p>
-            <p className="mt-1 text-gray-600 text-xs">Shembull: Për ID "1", emërtoni foton "staff-1.jpg".</p>
-          </div>
+
         </div>
         <button 
           onClick={() => setIsModalOpen(true)}
