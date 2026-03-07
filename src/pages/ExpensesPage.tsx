@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { format, isSameDay } from 'date-fns';
 import { sq } from 'date-fns/locale';
-import { DollarSign, Filter, Calendar as CalendarIcon, Download, Trash2, AlertTriangle, X } from 'lucide-react';
+import { DollarSign, Filter, Calendar as CalendarIcon, Download, Trash2, AlertTriangle, X, Plus, Lock } from 'lucide-react';
 import { useExpenses, ExpenseCategory } from '../lib/ExpenseContext';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -22,23 +22,80 @@ const MONTHS = [
 ];
 
 export default function ExpensesPage() {
-  const { expenses, deleteExpenses, deleteAllExpenses } = useExpenses();
-  const [selectedCategory, setSelectedCategory] = useState<'all' | 'products' | 'food'>('all');
+  const { expenses, addExpense, deleteExpenses, deleteAllExpenses } = useExpenses();
+  const [selectedCategory, setSelectedCategory] = useState<'all' | 'products' | 'food' | 'salaries'>('all');
   const [selectedMonth, setSelectedMonth] = useState<string>('all'); // 'all' or month index string
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  
+  // PIN Protection State
+  const [isPinModalOpen, setIsPinModalOpen] = useState(false);
+  const [pinInput, setPinInput] = useState('');
+  const [isSalariesUnlocked, setIsSalariesUnlocked] = useState(false);
+  const [pinError, setPinError] = useState(false);
+
+  // New Expense Form State
+  const [newExpense, setNewExpense] = useState({
+    description: '',
+    amount: '',
+    category: 'products' as ExpenseCategory,
+    date: format(new Date(), 'yyyy-MM-dd')
+  });
 
   // Filter Logic
   const filteredExpenses = expenses.filter(expense => {
     const expenseDate = new Date(expense.date);
     const expenseMonth = expenseDate.getMonth().toString();
 
-    const categoryMatch = selectedCategory === 'all' || expense.category === selectedCategory;
+    const categoryMatch = selectedCategory === 'all' 
+      ? (isSalariesUnlocked ? true : expense.category !== 'salaries') // If unlocked, show all. If locked, hide salaries from 'all' view.
+      : expense.category === selectedCategory;
+      
     const monthMatch = selectedMonth === 'all' || expenseMonth === selectedMonth;
 
     return categoryMatch && monthMatch;
   });
 
   const totalExpenses = filteredExpenses.reduce((sum, expense) => sum + expense.amount, 0);
+
+  const handleCategoryChange = (category: 'all' | 'products' | 'food' | 'salaries') => {
+    if (category === 'salaries' && !isSalariesUnlocked) {
+      setIsPinModalOpen(true);
+    } else {
+      setSelectedCategory(category);
+    }
+  };
+
+  const handlePinSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (pinInput === '1994') {
+      setIsSalariesUnlocked(true);
+      setSelectedCategory('salaries');
+      setIsPinModalOpen(false);
+      setPinInput('');
+      setPinError(false);
+    } else {
+      setPinError(true);
+      setPinInput('');
+    }
+  };
+
+  const handleAddExpense = (e: React.FormEvent) => {
+    e.preventDefault();
+    addExpense({
+      description: newExpense.description,
+      amount: parseFloat(newExpense.amount),
+      category: newExpense.category,
+      date: new Date(newExpense.date).toISOString()
+    });
+    setIsAddModalOpen(false);
+    setNewExpense({
+      description: '',
+      amount: '',
+      category: 'products',
+      date: format(new Date(), 'yyyy-MM-dd')
+    });
+  };
 
   const handleDeleteAll = () => {
     deleteAllExpenses();
@@ -74,6 +131,13 @@ export default function ExpensesPage() {
         </div>
         <div className="flex gap-3">
           <button 
+            onClick={() => setIsAddModalOpen(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-stone-900 text-white border border-stone-900 rounded-lg text-sm font-medium hover:bg-stone-800 transition-colors shadow-sm"
+          >
+            <Plus size={18} />
+            Shto Shpenzim
+          </button>
+          <button 
             onClick={() => setIsDeleteModalOpen(true)}
             className="flex items-center gap-2 px-4 py-2 bg-red-50 border border-red-200 rounded-lg text-sm font-medium text-red-600 hover:bg-red-100 transition-colors"
           >
@@ -96,22 +160,28 @@ export default function ExpensesPage() {
               <label className="text-xs font-bold uppercase text-stone-500 tracking-wider">Kategoria</label>
               <div className="flex bg-stone-100 p-1 rounded-lg w-fit">
                 <button
-                  onClick={() => setSelectedCategory('all')}
+                  onClick={() => handleCategoryChange('all')}
                   className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${selectedCategory === 'all' ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-500 hover:text-stone-900'}`}
                 >
                   Të Gjitha
                 </button>
                 <button
-                  onClick={() => setSelectedCategory('products')}
+                  onClick={() => handleCategoryChange('products')}
                   className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${selectedCategory === 'products' ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-500 hover:text-stone-900'}`}
                 >
                   Produkte
                 </button>
                 <button
-                  onClick={() => setSelectedCategory('food')}
+                  onClick={() => handleCategoryChange('food')}
                   className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${selectedCategory === 'food' ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-500 hover:text-stone-900'}`}
                 >
                   Ushqim
+                </button>
+                <button
+                  onClick={() => handleCategoryChange('salaries')}
+                  className={`px-4 py-2 text-sm font-medium rounded-md transition-all flex items-center gap-2 ${selectedCategory === 'salaries' ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-500 hover:text-stone-900'}`}
+                >
+                  {isSalariesUnlocked ? 'Paga' : <><Lock size={14} /> Paga</>}
                 </button>
               </div>
             </div>
@@ -166,9 +236,11 @@ export default function ExpensesPage() {
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize ${
                       expense.category === 'products' 
                         ? 'bg-blue-100 text-blue-800' 
-                        : 'bg-orange-100 text-orange-800'
+                        : expense.category === 'food'
+                        ? 'bg-orange-100 text-orange-800'
+                        : 'bg-green-100 text-green-800'
                     }`}>
-                      {expense.category === 'products' ? 'Produkte' : 'Ushqim'}
+                      {expense.category === 'products' ? 'Produkte' : expense.category === 'food' ? 'Ushqim' : 'Paga'}
                     </span>
                   </td>
                   <td className="py-4 text-sm text-stone-900 font-medium">
@@ -189,6 +261,146 @@ export default function ExpensesPage() {
           </tbody>
         </table>
       </div>
+
+      {/* Add Expense Modal */}
+      <AnimatePresence>
+        {isAddModalOpen && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm"
+          >
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white rounded-xl shadow-xl max-w-md w-full overflow-hidden"
+            >
+              <div className="p-6 border-b border-stone-100 flex justify-between items-center">
+                <h3 className="text-xl font-bold text-stone-900">Shto Shpenzim të Ri</h3>
+                <button onClick={() => setIsAddModalOpen(false)} className="text-stone-400 hover:text-stone-600">
+                  <X size={24} />
+                </button>
+              </div>
+              
+              <form onSubmit={handleAddExpense} className="p-6 space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-stone-700 mb-1">Përshkrimi</label>
+                  <input 
+                    type="text" 
+                    required
+                    value={newExpense.description}
+                    onChange={e => setNewExpense({...newExpense, description: e.target.value})}
+                    className="w-full p-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-stone-500 focus:border-stone-500"
+                    placeholder="p.sh. Blerje shampo"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-stone-700 mb-1">Shuma (€)</label>
+                    <input 
+                      type="number" 
+                      required
+                      min="0"
+                      step="0.01"
+                      value={newExpense.amount}
+                      onChange={e => setNewExpense({...newExpense, amount: e.target.value})}
+                      className="w-full p-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-stone-500 focus:border-stone-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-stone-700 mb-1">Data</label>
+                    <input 
+                      type="date" 
+                      required
+                      value={newExpense.date}
+                      onChange={e => setNewExpense({...newExpense, date: e.target.value})}
+                      className="w-full p-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-stone-500 focus:border-stone-500"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-stone-700 mb-1">Kategoria</label>
+                  <select 
+                    value={newExpense.category}
+                    onChange={e => setNewExpense({...newExpense, category: e.target.value as ExpenseCategory})}
+                    className="w-full p-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-stone-500 focus:border-stone-500"
+                  >
+                    <option value="products">Produkte</option>
+                    <option value="food">Ushqim</option>
+                    <option value="salaries">Paga</option>
+                  </select>
+                </div>
+
+                <button 
+                  type="submit"
+                  className="w-full bg-stone-900 text-white py-3 rounded-lg font-bold hover:bg-stone-800 transition-colors mt-4"
+                >
+                  Shto Shpenzimin
+                </button>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* PIN Modal */}
+      <AnimatePresence>
+        {isPinModalOpen && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm"
+          >
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white rounded-xl shadow-xl max-w-sm w-full overflow-hidden p-6"
+            >
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-bold text-stone-900 flex items-center gap-2">
+                  <Lock size={20} />
+                  Kërkohet Kod Sigurie
+                </h3>
+                <button onClick={() => { setIsPinModalOpen(false); setPinInput(''); setPinError(false); }} className="text-stone-400 hover:text-stone-600">
+                  <X size={20} />
+                </button>
+              </div>
+              
+              <form onSubmit={handlePinSubmit} className="space-y-4">
+                <p className="text-sm text-stone-600">
+                  Ju lutem shkruani kodin për të aksesuar kategorinë e Pagave.
+                </p>
+                
+                <div>
+                  <input 
+                    type="password" 
+                    autoFocus
+                    value={pinInput}
+                    onChange={e => setPinInput(e.target.value)}
+                    className={`w-full p-3 text-center text-2xl tracking-widest border rounded-lg focus:ring-2 focus:outline-none ${pinError ? 'border-red-500 focus:ring-red-200' : 'border-stone-300 focus:ring-stone-500'}`}
+                    placeholder="••••"
+                    maxLength={4}
+                  />
+                  {pinError && <p className="text-xs text-red-500 mt-1 text-center">Kodi i gabuar. Provoni përsëri.</p>}
+                </div>
+
+                <button 
+                  type="submit"
+                  className="w-full bg-stone-900 text-white py-3 rounded-lg font-bold hover:bg-stone-800 transition-colors"
+                >
+                  Konfirmo
+                </button>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Delete Modal */}
       <AnimatePresence>
