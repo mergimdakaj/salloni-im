@@ -65,42 +65,42 @@ export default function CalendarPage() {
 
   return (
     <div className="h-[calc(100vh-140px)] flex flex-col bg-stone-100 relative">
-      <header className="flex justify-between items-center mb-6 border-b border-stone-200 pb-4 bg-white px-6 pt-6 rounded-t-xl shadow-sm">
+      <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 border-b border-stone-200 pb-4 bg-white px-4 md:px-6 pt-6 rounded-t-xl shadow-sm">
         <div>
-          <h1 className="text-3xl font-serif font-bold text-stone-900">Kalendari</h1>
-          <p className="text-stone-500 mt-1">Menaxhimi i Termineve</p>
+          <h1 className="text-2xl md:text-3xl font-serif font-bold text-stone-900">Kalendari</h1>
+          <p className="text-stone-500 mt-1 text-sm md:text-base">Menaxhimi i Termineve</p>
         </div>
         
-        <div className="flex items-center gap-4">
-          <div className="flex bg-stone-100 p-1 rounded-lg border border-stone-200">
+        <div className="flex flex-wrap items-center gap-2 md:gap-4 w-full md:w-auto">
+          <div className="flex bg-stone-100 p-1 rounded-lg border border-stone-200 flex-1 md:flex-none">
             <button 
               onClick={() => setView('day')}
-              className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${view === 'day' ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-500 hover:text-stone-900'}`}
+              className={`flex-1 md:flex-none px-3 md:px-4 py-1.5 text-sm font-medium rounded-md transition-all ${view === 'day' ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-500 hover:text-stone-900'}`}
             >
               Ditore
             </button>
             <button 
               onClick={() => setView('week')}
-              className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${view === 'week' ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-500 hover:text-stone-900'}`}
+              className={`flex-1 md:flex-none px-3 md:px-4 py-1.5 text-sm font-medium rounded-md transition-all ${view === 'week' ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-500 hover:text-stone-900'}`}
             >
               Javore
             </button>
           </div>
 
-          <div className="flex items-center gap-2 bg-white border border-stone-200 rounded-lg p-1 shadow-sm">
-            <button onClick={() => setCurrentDate(addDays(currentDate, -1))} className="p-2 hover:bg-stone-100 rounded-md text-stone-600 transition-colors"><ChevronLeft size={20} /></button>
-            <span className="font-medium text-stone-900 px-4 min-w-[150px] text-center">
-              {format(currentDate, 'd MMMM yyyy', { locale: sq })}
+          <div className="flex items-center justify-between gap-2 bg-white border border-stone-200 rounded-lg p-1 shadow-sm flex-1 md:flex-none">
+            <button onClick={() => setCurrentDate(addDays(currentDate, -1))} className="p-1.5 md:p-2 hover:bg-stone-100 rounded-md text-stone-600 transition-colors"><ChevronLeft size={18} /></button>
+            <span className="font-medium text-stone-900 px-2 md:px-4 text-xs md:text-sm text-center whitespace-nowrap">
+              {format(currentDate, 'd MMM yyyy', { locale: sq })}
             </span>
-            <button onClick={() => setCurrentDate(addDays(currentDate, 1))} className="p-2 hover:bg-stone-100 rounded-md text-stone-600 transition-colors"><ChevronRight size={20} /></button>
+            <button onClick={() => setCurrentDate(addDays(currentDate, 1))} className="p-1.5 md:p-2 hover:bg-stone-100 rounded-md text-stone-600 transition-colors"><ChevronRight size={18} /></button>
           </div>
 
           <button 
             onClick={() => setIsAppointmentModalOpen(true)}
-            className="bg-stone-900 text-white px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-stone-800 transition-colors flex items-center gap-2 shadow-sm"
+            className="bg-stone-900 text-white px-3 md:px-4 py-2 md:py-2.5 rounded-lg text-sm font-medium hover:bg-stone-800 transition-colors flex items-center justify-center gap-2 shadow-sm flex-1 md:flex-none"
           >
             <Plus size={18} />
-            Termin i Ri
+            <span className="hidden sm:inline">Termin i Ri</span>
           </button>
           
           <button className="bg-white text-stone-600 border border-stone-200 px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-stone-50 transition-colors flex items-center gap-2 shadow-sm" title="Sync with Google Calendar">
@@ -111,108 +111,156 @@ export default function CalendarPage() {
       </header>
 
       {/* Calendar Grid */}
-      <div className="flex-1 overflow-auto bg-white border border-stone-200 shadow-sm rounded-b-xl relative mx-6 mb-6">
-        {/* Header Row */}
-        <div className="grid grid-cols-[80px_1fr] sticky top-0 z-20 bg-white border-b border-stone-200 shadow-sm">
-          <div className="p-4 border-r border-stone-200 bg-stone-100 flex items-center justify-center font-bold text-stone-500 text-sm uppercase tracking-wider">
-            Ora
-          </div>
-          <div 
-            className="grid"
-            style={{ gridTemplateColumns: view === 'day' ? `repeat(${staffMembers.length}, minmax(0, 1fr))` : '1fr' }}
-          >
-             {view === 'day' ? (
-               staffMembers.map(staff => (
-                 <div key={staff.id} className="p-4 border-r border-stone-200 last:border-r-0 text-center bg-stone-50">
-                   <div className="flex flex-col items-center gap-2">
-                     {staff.avatar ? (
-                       <img 
-                         src={staff.avatar} 
-                         onError={(e) => e.currentTarget.src = staff.fallbackAvatar}
-                         alt={staff.name} 
-                         className="w-10 h-10 rounded-full object-cover border-2 border-white shadow-sm" 
-                       />
-                     ) : (
-                       <div className="w-10 h-10 rounded-full bg-stone-200 flex items-center justify-center text-xs font-bold text-stone-600 border-2 border-white shadow-sm">
-                         {staff.name.substring(0, 2).toUpperCase()}
+      <div className="flex-1 overflow-auto bg-white border border-stone-200 shadow-sm rounded-b-xl relative mx-2 md:mx-6 mb-6">
+        <div className="min-w-[800px]"> {/* Force minimum width for horizontal scrolling on mobile */}
+          {/* Header Row */}
+          <div className="grid grid-cols-[60px_1fr] md:grid-cols-[80px_1fr] sticky top-0 z-20 bg-white border-b border-stone-200 shadow-sm">
+            <div className="p-2 md:p-4 border-r border-stone-200 bg-stone-100 flex items-center justify-center font-bold text-stone-500 text-[10px] md:text-sm uppercase tracking-wider">
+              Ora
+            </div>
+            <div 
+              className="grid"
+              style={{ gridTemplateColumns: view === 'day' ? `repeat(${staffMembers.length}, minmax(0, 1fr))` : `repeat(7, minmax(0, 1fr))` }}
+            >
+               {view === 'day' ? (
+                 staffMembers.map(staff => (
+                   <div key={staff.id} className="p-2 md:p-4 border-r border-stone-200 last:border-r-0 text-center bg-stone-50">
+                     <div className="flex flex-col items-center gap-1 md:gap-2">
+                       {staff.avatar ? (
+                         <img 
+                           src={staff.avatar} 
+                           onError={(e) => e.currentTarget.src = staff.fallbackAvatar}
+                           alt={staff.name} 
+                           className="w-8 h-8 md:w-10 md:h-10 rounded-full object-cover border-2 border-white shadow-sm" 
+                         />
+                       ) : (
+                         <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-stone-200 flex items-center justify-center text-[10px] md:text-xs font-bold text-stone-600 border-2 border-white shadow-sm">
+                           {staff.name.substring(0, 2).toUpperCase()}
+                         </div>
+                       )}
+                       <div>
+                         <div className="font-bold text-stone-900 text-xs md:text-sm truncate max-w-[80px] md:max-w-none">{staff.name}</div>
+                         <div className="text-[9px] md:text-xs font-bold text-stone-500 uppercase tracking-wide truncate max-w-[80px] md:max-w-none">{staff.role}</div>
                        </div>
-                     )}
-                     <div>
-                       <div className="font-bold text-stone-900 text-sm">{staff.name}</div>
-                       <div className="text-xs font-bold text-stone-500 uppercase tracking-wide">{staff.role}</div>
                      </div>
                    </div>
-                 </div>
-               ))
-             ) : (
-               <div className="p-8 text-center text-stone-400 font-medium">
-                 Pamja Javore (Së shpejti)
-               </div>
-             )}
-          </div>
-        </div>
-
-        {/* Time Slots */}
-        <div className="grid grid-cols-[80px_1fr]">
-          {/* Time Column */}
-          <div className="border-r border-stone-200 bg-stone-100">
-            {hours.map(hour => (
-              <div key={hour.toString()} className="h-32 border-b border-stone-200 flex items-start justify-center pt-3 font-mono text-xs font-bold text-stone-500 relative group">
-                {format(hour, 'HH:00')}
-              </div>
-            ))}
+                 ))
+               ) : (
+                 weekDays.map((day, index) => (
+                   <div key={index} className="p-2 md:p-4 border-r border-stone-200 last:border-r-0 text-center bg-stone-50">
+                     <div className="font-bold text-stone-900 text-xs md:text-sm capitalize truncate">{format(day, 'EEEE', { locale: sq })}</div>
+                     <div className="text-[10px] md:text-xs font-bold text-stone-500">{format(day, 'd MMM', { locale: sq })}</div>
+                   </div>
+                 ))
+               )}
+            </div>
           </div>
 
-          {/* Appointments Grid */}
-          <div 
-            className="grid"
-            style={{ gridTemplateColumns: view === 'day' ? `repeat(${staffMembers.length}, minmax(0, 1fr))` : '1fr' }}
-          >
-            {view === 'day' && staffMembers.map(staff => (
-              <div key={staff.id} className="border-r border-stone-200 last:border-r-0 relative bg-white">
-                {hours.map(hour => {
-                   const appointments = getAppointmentsForTime(hour, staff.id);
-                   return (
-                     <div key={hour.toString()} className="h-32 border-b border-stone-100 relative group hover:bg-stone-50 transition-colors">
-                        {/* Add Button on Hover */}
-                        <button 
-                          onClick={() => {
-                            setNewAptStaff(staff.id);
-                            setNewAptDate(format(currentDate, 'yyyy-MM-dd'));
-                            setNewAptTime(format(hour, 'HH:mm'));
-                            setIsAppointmentModalOpen(true);
-                          }}
-                          className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-0"
-                        >
-                          <div className="w-8 h-8 rounded-full bg-stone-100 flex items-center justify-center text-stone-400 hover:bg-stone-900 hover:text-white transition-all shadow-sm">
-                            <Plus size={16} />
+          {/* Time Slots */}
+          <div className="grid grid-cols-[60px_1fr] md:grid-cols-[80px_1fr]">
+            {/* Time Column */}
+            <div className="border-r border-stone-200 bg-stone-100">
+              {hours.map(hour => (
+                <div key={hour.toString()} className="h-24 md:h-32 border-b border-stone-200 flex items-start justify-center pt-2 md:pt-3 font-mono text-[10px] md:text-xs font-bold text-stone-500 relative group">
+                  {format(hour, 'HH:00')}
+                </div>
+              ))}
+            </div>
+
+            {/* Appointments Grid */}
+            <div 
+              className="grid"
+              style={{ gridTemplateColumns: view === 'day' ? `repeat(${staffMembers.length}, minmax(0, 1fr))` : `repeat(7, minmax(0, 1fr))` }}
+            >
+              {view === 'day' ? staffMembers.map(staff => (
+                <div key={staff.id} className="border-r border-stone-200 last:border-r-0 relative bg-white">
+                  {hours.map(hour => {
+                     const appointments = getAppointmentsForTime(hour, staff.id);
+                     return (
+                       <div key={hour.toString()} className="h-24 md:h-32 border-b border-stone-100 relative group hover:bg-stone-50 transition-colors">
+                          {/* Add Button on Hover */}
+                          <button 
+                            onClick={() => {
+                              setNewAptStaff(staff.id);
+                              setNewAptDate(format(currentDate, 'yyyy-MM-dd'));
+                              setNewAptTime(format(hour, 'HH:mm'));
+                              setIsAppointmentModalOpen(true);
+                            }}
+                            className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-0"
+                          >
+                            <div className="w-6 h-6 md:w-8 md:h-8 rounded-full bg-stone-100 flex items-center justify-center text-stone-400 hover:bg-stone-900 hover:text-white transition-all shadow-sm">
+                              <Plus size={14} className="md:w-4 md:h-4" />
+                            </div>
+                          </button>
+
+                          <div className="absolute inset-x-0.5 md:inset-x-1 top-0.5 md:top-1 bottom-0.5 md:bottom-1 flex flex-col gap-0.5 md:gap-1 overflow-y-auto z-10 custom-scrollbar">
+                            {appointments.map(apt => {
+                              const service = services.find(s => s.id === apt.serviceId);
+                              return (
+                                <motion.div
+                                  key={apt.id}
+                                  initial={{ scale: 0.95, opacity: 0 }}
+                                  animate={{ scale: 1, opacity: 1 }}
+                                  className="bg-stone-900 text-white p-1.5 md:p-2 rounded-md md:rounded-lg shadow-sm cursor-pointer hover:shadow-md transition-all flex flex-col justify-between border-l-[3px] md:border-l-4 border-stone-400 min-h-[40px] md:min-h-[60px]"
+                                >
+                                  <div>
+                                    <div className="font-bold text-[10px] md:text-xs leading-tight mb-0.5 truncate">{apt.client}</div>
+                                    <div className="text-[8px] md:text-[10px] text-stone-300 font-medium truncate">{service?.name}</div>
+                                  </div>
+                                </motion.div>
+                              );
+                            })}
                           </div>
-                        </button>
+                       </div>
+                     );
+                  })}
+                </div>
+              )) : weekDays.map((day, dayIndex) => (
+                <div key={dayIndex} className="border-r border-stone-200 last:border-r-0 relative bg-white">
+                  {hours.map(hour => {
+                     const cellTime = new Date(day);
+                     cellTime.setHours(hour.getHours(), 0, 0, 0);
+                     const appointments = getAppointmentsForTime(cellTime);
+                     
+                     return (
+                       <div key={hour.toString()} className="h-24 md:h-32 border-b border-stone-100 relative group hover:bg-stone-50 transition-colors">
+                          {/* Add Button on Hover */}
+                          <button 
+                            onClick={() => {
+                              setNewAptDate(format(cellTime, 'yyyy-MM-dd'));
+                              setNewAptTime(format(cellTime, 'HH:mm'));
+                              setIsAppointmentModalOpen(true);
+                            }}
+                            className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-0"
+                          >
+                            <div className="w-6 h-6 md:w-8 md:h-8 rounded-full bg-stone-100 flex items-center justify-center text-stone-400 hover:bg-stone-900 hover:text-white transition-all shadow-sm">
+                              <Plus size={14} className="md:w-4 md:h-4" />
+                            </div>
+                          </button>
 
-                        {appointments.map(apt => {
-                          const service = services.find(s => s.id === apt.serviceId);
-                          return (
-                            <motion.div
-                              key={apt.id}
-                              initial={{ scale: 0.95, opacity: 0 }}
-                              animate={{ scale: 1, opacity: 1 }}
-                              className="absolute top-1 left-1 right-1 bottom-1 bg-stone-900 text-white p-3 rounded-lg shadow-md cursor-pointer hover:shadow-lg transition-all z-10 flex flex-col justify-between border-l-4 border-stone-400"
-                            >
-                              <div>
-                                <div className="font-bold text-sm leading-tight mb-1">{apt.client}</div>
-                                <div className="text-xs text-stone-300 font-medium">{service?.name}</div>
-                              </div>
-                              <div className="text-[10px] font-mono text-stone-400 bg-white/10 self-start px-1.5 py-0.5 rounded">
-                                {format(new Date(apt.date), 'HH:mm')} - {format(addHours(new Date(apt.date), 1), 'HH:mm')}
-                              </div>
-                            </motion.div>
-                          );
-                        })}
-                     </div>
-                   );
-                })}
-              </div>
-            ))}
+                          <div className="absolute inset-x-0.5 md:inset-x-1 top-0.5 md:top-1 bottom-0.5 md:bottom-1 flex flex-col gap-0.5 md:gap-1 overflow-y-auto z-10 custom-scrollbar">
+                            {appointments.map(apt => {
+                              const service = services.find(s => s.id === apt.serviceId);
+                              const staff = staffMembers.find(s => s.id === apt.staffId);
+                              return (
+                                <motion.div
+                                  key={apt.id}
+                                  initial={{ scale: 0.95, opacity: 0 }}
+                                  animate={{ scale: 1, opacity: 1 }}
+                                  className="bg-stone-900 text-white p-1 md:p-2 rounded md:rounded-md shadow-sm cursor-pointer hover:shadow-md transition-all border-l-2 border-stone-400 min-h-[36px] md:min-h-[50px]"
+                                >
+                                  <div className="font-bold text-[9px] md:text-[11px] leading-tight truncate">{apt.client}</div>
+                                  <div className="text-[8px] md:text-[9px] text-stone-300 truncate">{service?.name} • {staff?.name.split(' ')[0]}</div>
+                                </motion.div>
+                              );
+                            })}
+                          </div>
+                       </div>
+                     );
+                  })}
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>
