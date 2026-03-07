@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { TrendingUp, Users, Calendar, DollarSign, Clock, X, Plus, Check } from 'lucide-react';
+import { TrendingUp, Users, Calendar, DollarSign, Clock, X, Plus, Check, Trash2, Lock } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { format, isSameDay, addHours, startOfToday } from 'date-fns';
 import { sq } from 'date-fns/locale';
@@ -27,6 +27,20 @@ export default function DashboardPage() {
   const [isAppointmentModalOpen, setIsAppointmentModalOpen] = useState(false);
   const [isClientModalOpen, setIsClientModalOpen] = useState(false);
   const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
+  
+  // PIN and Clear Stats State
+  const [isPinModalOpen, setIsPinModalOpen] = useState(false);
+  const [pinInput, setPinInput] = useState('');
+  const [pinError, setPinError] = useState(false);
+  const [isDailyStatsCleared, setIsDailyStatsCleared] = useState(false);
+
+  // Check if stats were cleared today on mount
+  useEffect(() => {
+    const clearedDate = localStorage.getItem('salon_daily_stats_cleared_date');
+    if (clearedDate === format(new Date(), 'yyyy-MM-dd')) {
+      setIsDailyStatsCleared(true);
+    }
+  }, []);
 
   // Expense State
   const [expenseCategory, setExpenseCategory] = useState<ExpenseCategory>('products');
@@ -90,8 +104,33 @@ export default function DashboardPage() {
     alert('Termini u shtua me sukses!');
   };
 
+  const handlePinSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (pinInput === '1994') {
+      setIsDailyStatsCleared(true);
+      localStorage.setItem('salon_daily_stats_cleared_date', format(new Date(), 'yyyy-MM-dd'));
+      setIsPinModalOpen(false);
+      setPinInput('');
+      setPinError(false);
+    } else {
+      setPinError(true);
+      setPinInput('');
+    }
+  };
+
   // Filter today's appointments for the table
-  const todaysAppointments = appointments.filter(apt => isSameDay(new Date(apt.date), new Date()));
+  const todaysAppointments = isDailyStatsCleared ? [] : appointments.filter(apt => isSameDay(new Date(apt.date), new Date()));
+  
+  // Calculate real revenue from today's appointments
+  const todaysRevenue = todaysAppointments.reduce((sum, apt) => {
+    const service = SERVICES.find(s => s.id === apt.serviceId);
+    return sum + (service?.price || 0);
+  }, 0);
+
+  // Stats values based on clear state
+  const displayRevenue = isDailyStatsCleared ? '€0' : `€${todaysRevenue}`;
+  const displayAppointments = isDailyStatsCleared ? '0' : todaysAppointments.length.toString();
+  const displayNewClients = isDailyStatsCleared ? '0' : '5'; // Hardcoded 5 for demo, but clears to 0
 
   return (
     <div className="space-y-8 relative">
@@ -100,9 +139,18 @@ export default function DashboardPage() {
           <h1 className="text-3xl font-serif font-bold text-stone-900">Paneli Kryesor</h1>
           <p className="text-stone-500 mt-1">Mirësevini, shikoni aktivitetin e sotëm.</p>
         </div>
-        <div className="text-right">
-          <div className="text-sm font-medium text-stone-500 uppercase tracking-wider">Data e Sotme</div>
-          <div className="text-2xl font-serif font-bold mt-1">{format(new Date(), 'd MMMM yyyy', { locale: sq })}</div>
+        <div className="flex items-center gap-6">
+          <div className="text-right">
+            <div className="text-sm font-medium text-stone-500 uppercase tracking-wider">Data e Sotme</div>
+            <div className="text-2xl font-serif font-bold mt-1">{format(new Date(), 'd MMMM yyyy', { locale: sq })}</div>
+          </div>
+          <button 
+            onClick={() => setIsPinModalOpen(true)}
+            className="p-3 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg transition-colors border border-red-200"
+            title="Fshi Statistikat e Sotme"
+          >
+            <Trash2 size={20} />
+          </button>
         </div>
       </header>
 
@@ -110,23 +158,23 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard 
           title="Të Ardhurat Sot" 
-          value="€1,240" 
+          value={displayRevenue} 
           icon={<DollarSign size={24} />} 
-          trend="+12%"
+          trend={isDailyStatsCleared ? "0%" : "+12%"}
           color="bg-stone-900 text-white"
         />
         <StatCard 
           title="Termine Aktive" 
-          value={todaysAppointments.length.toString()} 
+          value={displayAppointments} 
           icon={<Calendar size={24} />} 
-          trend="+4"
+          trend={isDailyStatsCleared ? "0" : "+4"}
           color="bg-white text-stone-900 border border-stone-200"
         />
         <StatCard 
           title="Klientë të Rinj" 
-          value="5" 
+          value={displayNewClients} 
           icon={<Users size={24} />} 
-          trend="+2"
+          trend={isDailyStatsCleared ? "0" : "+2"}
           color="bg-white text-stone-900 border border-stone-200"
         />
         <StatCard 
@@ -481,26 +529,55 @@ export default function DashboardPage() {
             </motion.div>
           </div>
         )}
-      </AnimatePresence>
-    </div>
-  );
-}
 
-function StatCard({ title, value, icon, trend, color = "bg-white border border-stone-200" }: any) {
-  const isDark = color.includes('bg-stone-900');
-  
-  return (
-    <div className={`${color} p-6 rounded-xl shadow-sm hover:shadow-md transition-shadow`}>
-      <div className="flex justify-between items-start mb-4">
-        <div className={`p-2 rounded-lg ${isDark ? 'bg-white/10 text-white' : 'bg-stone-50 text-stone-900'}`}>
-          {icon}
-        </div>
-        <span className={`text-xs font-bold px-2 py-1 rounded-full ${isDark ? 'bg-white/20 text-white' : 'bg-green-50 text-green-700'}`}>{trend}</span>
-      </div>
-      <div>
-        <h3 className={`text-sm font-medium uppercase tracking-wide ${isDark ? 'text-stone-400' : 'text-stone-500'}`}>{title}</h3>
-        <p className={`text-3xl font-serif font-bold mt-1 ${isDark ? 'text-white' : 'text-stone-900'}`}>{value}</p>
-      </div>
+        {/* PIN Modal for Clearing Stats */}
+        {isPinModalOpen && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white rounded-xl shadow-xl max-w-sm w-full overflow-hidden p-6"
+            >
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-bold text-stone-900 flex items-center gap-2">
+                  <Lock size={20} />
+                  Kërkohet Kod Sigurie
+                </h3>
+                <button onClick={() => { setIsPinModalOpen(false); setPinInput(''); setPinError(false); }} className="text-stone-400 hover:text-stone-600">
+                  <X size={20} />
+                </button>
+              </div>
+              
+              <form onSubmit={handlePinSubmit} className="space-y-4">
+                <p className="text-sm text-stone-600">
+                  Ju lutem shkruani kodin për të fshirë statistikat e sotme (Të ardhurat, Terminet, Klientët e rinj).
+                </p>
+                
+                <div>
+                  <input 
+                    type="password" 
+                    autoFocus
+                    value={pinInput}
+                    onChange={e => setPinInput(e.target.value)}
+                    className={`w-full p-3 text-center text-2xl tracking-widest border rounded-lg focus:ring-2 focus:outline-none ${pinError ? 'border-red-500 focus:ring-red-200' : 'border-stone-300 focus:ring-stone-500'}`}
+                    placeholder="••••"
+                    maxLength={4}
+                  />
+                  {pinError && <p className="text-xs text-red-500 mt-1 text-center">Kodi i gabuar. Provoni përsëri.</p>}
+                </div>
+
+                <button 
+                  type="submit"
+                  className="w-full bg-stone-900 text-white py-3 rounded-lg font-bold hover:bg-stone-800 transition-colors"
+                >
+                  Konfirmo Fshirjen
+                </button>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
