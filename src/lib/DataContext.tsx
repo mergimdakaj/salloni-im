@@ -42,7 +42,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   });
 
   const [staff, setStaff] = useState<Staff[]>(() => {
-    // Changed key to v2 to force refresh of staff data (including new image paths)
+    // Changed key to v3 to force refresh of staff data (including new image paths)
     const saved = localStorage.getItem('salon_staff_v3');
     return saved ? JSON.parse(saved) : INITIAL_STAFF;
   });
