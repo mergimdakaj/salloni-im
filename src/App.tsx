@@ -21,7 +21,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-import { ExpensesProvider } from './lib/ExpensesContext';
+import { ExpensesProvider } from './lib/ExpenseContext';
 import { AppointmentsProvider } from './lib/AppointmentsContext';
 import { DataProvider } from './lib/DataContext';
 
