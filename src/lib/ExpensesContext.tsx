@@ -13,6 +13,8 @@ export interface Expense {
 interface ExpensesContextType {
   expenses: Expense[];
   addExpense: (expense: Omit<Expense, 'id'>) => void;
+  deleteExpenses: (ids: string[]) => void;
+  deleteAllExpenses: () => void;
 }
 
 const ExpensesContext = createContext<ExpensesContextType | undefined>(undefined);
@@ -46,8 +48,16 @@ export function ExpensesProvider({ children }: { children: React.ReactNode }) {
     setExpenses(prev => [expense, ...prev]);
   };
 
+  const deleteExpenses = (ids: string[]) => {
+    setExpenses(prev => prev.filter(expense => !ids.includes(expense.id)));
+  };
+
+  const deleteAllExpenses = () => {
+    setExpenses([]);
+  };
+
   return (
-    <ExpensesContext.Provider value={{ expenses, addExpense }}>
+    <ExpensesContext.Provider value={{ expenses, addExpense, deleteExpenses, deleteAllExpenses }}>
       {children}
     </ExpensesContext.Provider>
   );
