@@ -15,3 +15,19 @@ body {
 h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-serif);
 }
+
+/* Custom Scrollbar for Appointment Grid */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: #d6d3d1;
+  border-radius: 10px;
+}
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #d6d3d1 transparent;
+}
