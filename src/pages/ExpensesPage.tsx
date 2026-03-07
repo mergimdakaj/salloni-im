@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { format } from 'date-fns';
+import { format, isSameDay } from 'date-fns';
 import { sq } from 'date-fns/locale';
-import { DollarSign, Filter, Calendar as CalendarIcon, Download } from 'lucide-react';
+import { DollarSign, Filter, Calendar as CalendarIcon, Download, Trash2, AlertTriangle, X } from 'lucide-react';
 import { useExpenses } from '../lib/ExpensesContext';
+import { motion, AnimatePresence } from 'motion/react';
 
 const MONTHS = [
   { value: 'all', label: 'Të gjithë muajt' },
@@ -21,9 +22,10 @@ const MONTHS = [
 ];
 
 export default function ExpensesPage() {
-  const { expenses } = useExpenses();
+  const { expenses, deleteExpenses, deleteAllExpenses } = useExpenses();
   const [selectedCategory, setSelectedCategory] = useState<'all' | 'products' | 'food'>('all');
   const [selectedMonth, setSelectedMonth] = useState<string>('all'); // 'all' or month index string
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   // Filter Logic
   const filteredExpenses = expenses.filter(expense => {
@@ -38,14 +40,46 @@ export default function ExpensesPage() {
 
   const totalExpenses = filteredExpenses.reduce((sum, expense) => sum + expense.amount, 0);
 
+  const handleDeleteAll = () => {
+    deleteAllExpenses();
+    setIsDeleteModalOpen(false);
+  };
+
+  const handleDeleteMonthly = () => {
+    if (selectedMonth === 'all') return;
+    const expensesToDelete = expenses.filter(e => new Date(e.date).getMonth().toString() === selectedMonth);
+    deleteExpenses(expensesToDelete.map(e => e.id));
+    setIsDeleteModalOpen(false);
+  };
+
+  const handleDeleteDaily = () => {
+    const today = new Date();
+    const expensesToDelete = expenses.filter(e => isSameDay(new Date(e.date), today));
+    
+    if (expensesToDelete.length === 0) {
+      alert('Nuk ka shpenzime për ditën e sotme.');
+      return;
+    }
+
+    deleteExpenses(expensesToDelete.map(e => e.id));
+    setIsDeleteModalOpen(false);
+  };
+
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 relative">
       <header className="flex justify-between items-end border-b border-stone-200 pb-6">
         <div>
           <h1 className="text-3xl font-serif font-bold text-stone-900">Shpenzimet</h1>
           <p className="text-stone-500 mt-1">Menaxhimi i shpenzimeve të sallonit</p>
         </div>
         <div className="flex gap-3">
+          <button 
+            onClick={() => setIsDeleteModalOpen(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-red-50 border border-red-200 rounded-lg text-sm font-medium text-red-600 hover:bg-red-100 transition-colors"
+          >
+            <Trash2 size={18} />
+            Menaxho Fshirjen
+          </button>
           <button className="flex items-center gap-2 px-4 py-2 bg-white border border-stone-200 rounded-lg text-sm font-medium text-stone-600 hover:bg-stone-50">
             <Download size={18} />
             Eksporto Raportin
@@ -155,6 +189,90 @@ export default function ExpensesPage() {
           </tbody>
         </table>
       </div>
+
+      {/* Delete Modal */}
+      <AnimatePresence>
+        {isDeleteModalOpen && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm"
+          >
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white rounded-xl shadow-xl max-w-md w-full overflow-hidden"
+            >
+              <div className="p-6 border-b border-stone-100 flex justify-between items-center">
+                <h3 className="text-xl font-bold text-stone-900 flex items-center gap-2">
+                  <Trash2 className="text-red-500" />
+                  Fshi Shpenzimet
+                </h3>
+                <button onClick={() => setIsDeleteModalOpen(false)} className="text-stone-400 hover:text-stone-600">
+                  <X size={24} />
+                </button>
+              </div>
+              
+              <div className="p-6 space-y-4">
+                <p className="text-stone-600 mb-4">
+                  Zgjidhni cilat shpenzime dëshironi të fshini. <span className="font-bold text-red-600">Kujdes: Ky veprim nuk mund të kthehet prapa!</span>
+                </p>
+
+                <button 
+                  onClick={handleDeleteDaily}
+                  className="w-full flex items-center justify-between p-4 border border-stone-200 rounded-lg hover:bg-stone-50 transition-colors group"
+                >
+                  <div className="text-left">
+                    <div className="font-bold text-stone-900 group-hover:text-red-600 transition-colors">Fshi të Sotmet</div>
+                    <div className="text-xs text-stone-500">Fshin vetëm shpenzimet e datës {format(new Date(), 'd MMM yyyy', { locale: sq })}</div>
+                  </div>
+                  <Trash2 size={18} className="text-stone-300 group-hover:text-red-500" />
+                </button>
+
+                <button 
+                  onClick={handleDeleteMonthly}
+                  disabled={selectedMonth === 'all'}
+                  className={`w-full flex items-center justify-between p-4 border border-stone-200 rounded-lg transition-colors group ${
+                    selectedMonth === 'all' ? 'opacity-50 cursor-not-allowed bg-stone-50' : 'hover:bg-stone-50'
+                  }`}
+                >
+                  <div className="text-left">
+                    <div className="font-bold text-stone-900 group-hover:text-red-600 transition-colors">
+                      {selectedMonth === 'all' ? 'Zgjidhni një muaj fillimisht' : `Fshi të Muajit ${MONTHS.find(m => m.value === selectedMonth)?.label}`}
+                    </div>
+                    <div className="text-xs text-stone-500">
+                      {selectedMonth === 'all' ? 'Përdorni filtrin e muajit për të aktivizuar këtë opsion' : 'Fshin të gjitha shpenzimet e këtij muaji'}
+                    </div>
+                  </div>
+                  <Trash2 size={18} className="text-stone-300 group-hover:text-red-500" />
+                </button>
+
+                <button 
+                  onClick={handleDeleteAll}
+                  className="w-full flex items-center justify-between p-4 border border-red-200 bg-red-50 rounded-lg hover:bg-red-100 transition-colors group"
+                >
+                  <div className="text-left">
+                    <div className="font-bold text-red-700">Fshi TË GJITHA</div>
+                    <div className="text-xs text-red-500">Fshin çdo shpenzim nga baza e të dhënave</div>
+                  </div>
+                  <AlertTriangle size={18} className="text-red-500" />
+                </button>
+              </div>
+
+              <div className="p-4 bg-stone-50 border-t border-stone-100 flex justify-end">
+                <button 
+                  onClick={() => setIsDeleteModalOpen(false)}
+                  className="px-4 py-2 font-medium text-stone-600 hover:text-stone-900"
+                >
+                  Anulo
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
