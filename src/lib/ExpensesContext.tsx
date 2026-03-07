@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
-export type ExpenseCategory = 'products' | 'food';
-
+export type ExpenseCategory = 'products' | 'food' | 'salaries';
 export interface Expense {
   id: string;
   category: ExpenseCategory;
