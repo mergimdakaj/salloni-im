@@ -34,6 +34,43 @@ export default function DashboardPage() {
   const [pinError, setPinError] = useState(false);
   const [isDailyStatsCleared, setIsDailyStatsCleared] = useState(false);
 
+  // Client State
+  const [clients, setClients] = useState<any[]>(() => {
+    const saved = localStorage.getItem('salon_clients');
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [newClientName, setNewClientName] = useState('');
+  const [newClientSurname, setNewClientSurname] = useState('');
+  const [newClientPhone, setNewClientPhone] = useState('');
+  const [newClientEmail, setNewClientEmail] = useState('');
+
+  // Save clients to local storage
+  useEffect(() => {
+    localStorage.setItem('salon_clients', JSON.stringify(clients));
+  }, [clients]);
+
+  const handleAddClient = () => {
+    if (!newClientName || !newClientSurname) {
+      alert('Ju lutem plotësoni emrin dhe mbiemrin!');
+      return;
+    }
+    const newClient = {
+      id: Math.random().toString(36).substr(2, 9),
+      name: newClientName,
+      surname: newClientSurname,
+      phone: newClientPhone,
+      email: newClientEmail,
+      createdAt: new Date().toISOString()
+    };
+    setClients(prev => [...prev, newClient]);
+    setIsClientModalOpen(false);
+    setNewClientName('');
+    setNewClientSurname('');
+    setNewClientPhone('');
+    setNewClientEmail('');
+    alert('Klienti u regjistrua me sukses!');
+  };
+
   // Check if stats were cleared today on mount
   useEffect(() => {
     const clearedDate = localStorage.getItem('salon_daily_stats_cleared_date');
@@ -128,9 +165,10 @@ export default function DashboardPage() {
   }, 0);
 
   // Stats values based on clear state
+  const todaysClients = isDailyStatsCleared ? [] : clients.filter(c => isSameDay(new Date(c.createdAt), new Date()));
   const displayRevenue = isDailyStatsCleared ? '€0' : `€${todaysRevenue}`;
   const displayAppointments = isDailyStatsCleared ? '0' : todaysAppointments.length.toString();
-  const displayNewClients = isDailyStatsCleared ? '0' : '5'; // Hardcoded 5 for demo, but clears to 0
+  const displayNewClients = isDailyStatsCleared ? '0' : todaysClients.length.toString();
 
   return (
     <div className="space-y-8 relative">
@@ -314,9 +352,7 @@ export default function DashboardPage() {
             </div>
           </div>
         </div>
-      </div>
-
-      {/* Modals */}
+        {/* Modals */}
       <AnimatePresence>
         {isExpenseModalOpen && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -507,22 +543,46 @@ export default function DashboardPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-stone-700 mb-1">Emri</label>
-                    <input type="text" className="w-full p-3 border border-stone-200 rounded-lg focus:outline-none focus:border-stone-900" placeholder="Emri" />
+                    <input 
+                      type="text" 
+                      value={newClientName}
+                      onChange={(e) => setNewClientName(e.target.value)}
+                      className="w-full p-3 border border-stone-200 rounded-lg focus:outline-none focus:border-stone-900" 
+                      placeholder="Emri" 
+                    />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-stone-700 mb-1">Mbiemri</label>
-                    <input type="text" className="w-full p-3 border border-stone-200 rounded-lg focus:outline-none focus:border-stone-900" placeholder="Mbiemri" />
+                    <input 
+                      type="text" 
+                      value={newClientSurname}
+                      onChange={(e) => setNewClientSurname(e.target.value)}
+                      className="w-full p-3 border border-stone-200 rounded-lg focus:outline-none focus:border-stone-900" 
+                      placeholder="Mbiemri" 
+                    />
                   </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-stone-700 mb-1">Telefoni</label>
-                  <input type="tel" className="w-full p-3 border border-stone-200 rounded-lg focus:outline-none focus:border-stone-900" placeholder="+383 44 ..." />
+                  <input 
+                    type="tel" 
+                    value={newClientPhone}
+                    onChange={(e) => setNewClientPhone(e.target.value)}
+                    className="w-full p-3 border border-stone-200 rounded-lg focus:outline-none focus:border-stone-900" 
+                    placeholder="+383 44 ..." 
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-stone-700 mb-1">Email (Opsionale)</label>
-                  <input type="email" className="w-full p-3 border border-stone-200 rounded-lg focus:outline-none focus:border-stone-900" placeholder="email@example.com" />
+                  <input 
+                    type="email" 
+                    value={newClientEmail}
+                    onChange={(e) => setNewClientEmail(e.target.value)}
+                    className="w-full p-3 border border-stone-200 rounded-lg focus:outline-none focus:border-stone-900" 
+                    placeholder="email@example.com" 
+                  />
                 </div>
-                <button type="button" onClick={() => { setIsClientModalOpen(false); alert('Klienti u regjistrua me sukses!'); }} className="w-full bg-stone-900 text-white py-3 rounded-lg font-bold hover:bg-stone-800 transition-colors mt-4">
+                <button type="button" onClick={handleAddClient} className="w-full bg-stone-900 text-white py-3 rounded-lg font-bold hover:bg-stone-800 transition-colors mt-4">
                   Regjistro Klientin
                 </button>
               </form>
@@ -581,3 +641,23 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+function StatCard({ title, value, icon, trend, color = "bg-white border border-stone-200" }: any) {
+  const isDark = color.includes('bg-stone-900');
+  
+  return (
+    <div className={`${color} p-6 rounded-xl shadow-sm hover:shadow-md transition-shadow`}>
+      <div className="flex justify-between items-start mb-4">
+        <div className={`p-2 rounded-lg ${isDark ? 'bg-white/10 text-white' : 'bg-stone-50 text-stone-900'}`}>
+          {icon}
+        </div>
+        <span className={`text-xs font-bold px-2 py-1 rounded-full ${isDark ? 'bg-white/20 text-white' : 'bg-green-50 text-green-700'}`}>{trend}</span>
+      </div>
+      <div>
+        <h3 className={`text-sm font-medium uppercase tracking-wide ${isDark ? 'text-stone-400' : 'text-stone-500'}`}>{title}</h3>
+        <p className={`text-3xl font-serif font-bold mt-1 ${isDark ? 'text-white' : 'text-stone-900'}`}>{value}</p>
+      </div>
+    </div>
+  );
+}
+      </div>
