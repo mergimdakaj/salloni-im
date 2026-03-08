@@ -352,7 +352,7 @@ export default function DashboardPage() {
             </div>
           </div>
         </div>
-        {/* Modals */}
+       {/* Modals */}
       <AnimatePresence>
         {isExpenseModalOpen && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -660,4 +660,3 @@ function StatCard({ title, value, icon, trend, color = "bg-white border border-s
     </div>
   );
 }
-      </div>
