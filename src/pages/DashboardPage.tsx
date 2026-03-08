@@ -352,7 +352,9 @@ export default function DashboardPage() {
             </div>
           </div>
         </div>
-       {/* Modals */}
+      </div>
+
+      {/* Modals */}
       <AnimatePresence>
         {isExpenseModalOpen && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -590,7 +592,7 @@ export default function DashboardPage() {
           </div>
         )}
 
-{/* PIN Modal for Clearing Stats */}
+        {/* PIN Modal for Clearing Stats */}
         {isPinModalOpen && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
             <motion.div 
