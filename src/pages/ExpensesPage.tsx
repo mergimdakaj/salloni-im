@@ -4,7 +4,22 @@ import { sq } from 'date-fns/locale';
 import { DollarSign, Filter, Calendar as CalendarIcon, Download, Trash2, AlertTriangle, X, Plus, Lock } from 'lucide-react';
 import { useExpenses, ExpenseCategory } from '../lib/ExpenseContext';
 import { motion, AnimatePresence } from 'motion/react';
-
+const StatCard = ({ title, value, icon: Icon, trend }: any) => (
+  <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+    <div className="flex items-center justify-between mb-4">
+      <h3 className="text-gray-500 text-sm font-medium">{title}</h3>
+      <div className="p-2 bg-indigo-50 rounded-lg">
+        <Icon className="w-5 h-5 text-indigo-600" />
+      </div>
+    </div>
+    <p className="text-2xl font-bold text-gray-900">{value}</p>
+    {trend && (
+      <p className={`text-sm mt-2 ${trend.isPositive ? 'text-green-600' : 'text-red-600'}`}>
+        {trend.isPositive ? '+' : ''}{trend.value}% nga muaji i kaluar
+      </p>
+    )}
+  </div>
+);
 const MONTHS = [
   { value: 'all', label: 'Të gjithë muajt' },
   { value: '0', label: 'Janar' },
