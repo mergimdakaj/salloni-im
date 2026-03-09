@@ -14,26 +14,24 @@ export interface Appointment {
 interface AppointmentsContextType {
   appointments: Appointment[];
   addAppointment: (appointment: Omit<Appointment, 'id' | 'status'>) => Promise<void>;
+  deleteAppointment: (id: string) => Promise<void>;
+  deleteAllAppointments: () => Promise<void>;
   isSlotBooked: (date: Date, time: string, staffId: string) => boolean;
 }
 
 const AppointmentsContext = createContext<AppointmentsContextType | undefined>(undefined);
 
-// Initial mock data
-const INITIAL_APPOINTMENTS: Appointment[] = [
-  { id: '1', client: 'Vlora M.', serviceId: '2', staffId: '2', date: new Date().toISOString(), status: 'booked' },
-];
+// Të dhënat fillestare (opsionale)
+const INITIAL_APPOINTMENTS: Appointment[] = [];
 
 export function AppointmentsProvider({ children }: { children: React.ReactNode }) {
   const [appointments, setAppointments] = useState<Appointment[]>(() => {
-    // Initial load from localStorage to prevent flash of empty content if offline/loading
     const saved = localStorage.getItem('salon_appointments');
     return saved ? JSON.parse(saved) : INITIAL_APPOINTMENTS;
   });
 
   useEffect(() => {
     if (db) {
-      // Firebase Mode
       const q = query(collection(db, 'appointments'), orderBy('date', 'desc'));
       const unsubscribe = onSnapshot(q, (snapshot) => {
         const firebaseAppointments = snapshot.docs.map(doc => ({
@@ -41,24 +39,17 @@ export function AppointmentsProvider({ children }: { children: React.ReactNode }
           ...doc.data()
         })) as Appointment[];
         setAppointments(firebaseAppointments);
-        // Sync to local storage for offline backup/faster initial load next time
         localStorage.setItem('salon_appointments', JSON.stringify(firebaseAppointments));
       }, (error) => {
         console.error("Error fetching appointments:", error);
       });
 
       return () => unsubscribe();
-    } else {
-      // LocalStorage Mode (Fallback)
-      localStorage.setItem('salon_appointments', JSON.stringify(appointments));
     }
-  }, [db]); // Re-run if db connection changes (unlikely but safe)
+  }, [db]);
 
-  // Effect for LocalStorage mode updates
   useEffect(() => {
-    if (!db) {
-      localStorage.setItem('salon_appointments', JSON.stringify(appointments));
-    }
+    localStorage.setItem('salon_appointments', JSON.stringify(appointments));
   }, [appointments]);
 
   const addAppointment = async (newAppointment: Omit<Appointment, 'id' | 'status'>) => {
@@ -68,21 +59,51 @@ export function AppointmentsProvider({ children }: { children: React.ReactNode }
       createdAt: new Date().toISOString()
     };
 
+    const localAppointment: Appointment = {
+      ...appointmentData,
+      id: Math.random().toString(36).substr(2, 9),
+    };
+
     if (db) {
       try {
         await addDoc(collection(db, 'appointments'), appointmentData);
-        // State updates automatically via onSnapshot
-      } catch (e) {
-        console.error("Error adding document: ", e);
-        alert("Gabim gjatë ruajtjes së rezervimit. Ju lutem provoni përsëri.");
+      } catch (e: any) {
+        console.error("Error adding to Firebase: ", e);
+        setAppointments(prev => [localAppointment, ...prev]);
       }
     } else {
-      // Local Fallback
-      const appointment: Appointment = {
-        ...appointmentData,
-        id: Math.random().toString(36).substr(2, 9),
-      };
-      setAppointments(prev => [...prev, appointment]);
+      setAppointments(prev => [localAppointment, ...prev]);
+    }
+  };
+
+  const deleteAppointment = async (id: string) => {
+    if (db) {
+      try {
+        const { doc, deleteDoc } = await import('firebase/firestore');
+        await deleteDoc(doc(db, 'appointments', id));
+      } catch (e: any) {
+        setAppointments(prev => prev.filter(apt => apt.id !== id));
+      }
+    } else {
+      setAppointments(prev => prev.filter(apt => apt.id !== id));
+    }
+  };
+
+  const deleteAllAppointments = async () => {
+    if (db) {
+      try {
+        const { doc, writeBatch } = await import('firebase/firestore');
+        const batch = writeBatch(db);
+        appointments.forEach(apt => {
+          batch.delete(doc(db, 'appointments', apt.id));
+        });
+        await batch.commit();
+      } catch (e: any) {
+        console.error("Error deleting all: ", e);
+        setAppointments([]);
+      }
+    } else {
+      setAppointments([]);
     }
   };
 
@@ -90,14 +111,12 @@ export function AppointmentsProvider({ children }: { children: React.ReactNode }
     return appointments.some(appt => {
       const apptDate = new Date(appt.date);
       const checkDate = new Date(date);
-      
-      // Parse time string "HH:mm"
       const [hours, minutes] = time.split(':').map(Number);
       checkDate.setHours(hours, minutes, 0, 0);
 
       return (
         appt.staffId === staffId &&
-        appt.status !== 'cancelled' && // Don't block cancelled slots
+        appt.status !== 'cancelled' &&
         apptDate.getFullYear() === checkDate.getFullYear() &&
         apptDate.getMonth() === checkDate.getMonth() &&
         apptDate.getDate() === checkDate.getDate() &&
@@ -108,7 +127,7 @@ export function AppointmentsProvider({ children }: { children: React.ReactNode }
   };
 
   return (
-    <AppointmentsContext.Provider value={{ appointments, addAppointment, isSlotBooked }}>
+    <AppointmentsContext.Provider value={{ appointments, addAppointment, deleteAppointment, deleteAllAppointments, isSlotBooked }}>
       {children}
     </AppointmentsContext.Provider>
   );
