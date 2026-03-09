@@ -1,17 +1,28 @@
 import React, { useState } from 'react';
 import { format, addDays, startOfWeek, addHours, startOfDay, isSameDay } from 'date-fns';
 import { sq } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight, Plus, Calendar as CalendarIcon, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Calendar as CalendarIcon, X, Trash2, Lock } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAppointments } from '../lib/AppointmentsContext';
 import { useData } from '../lib/DataContext';
 
 export default function CalendarPage() {
-  const { appointments, addAppointment, isSlotBooked } = useAppointments();
+  const { appointments, addAppointment, deleteAppointment, deleteAllAppointments, isSlotBooked } = useAppointments();
   const { services, staff: staffMembers } = useData();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [view, setView] = useState<'day' | 'week'>('day');
   const [isAppointmentModalOpen, setIsAppointmentModalOpen] = useState(false);
+
+  // Delete Appointment State
+  const [isPinModalOpen, setIsPinModalOpen] = useState(false);
+  const [appointmentToDelete, setAppointmentToDelete] = useState<string | null>(null);
+  const [pinInput, setPinInput] = useState('');
+  const [pinError, setPinError] = useState(false);
+
+  // Delete All Appointments State
+  const [isDeleteAllPinModalOpen, setIsDeleteAllPinModalOpen] = useState(false);
+  const [deleteAllPinInput, setDeleteAllPinInput] = useState('');
+  const [deleteAllPinError, setDeleteAllPinError] = useState(false);
 
   // New Appointment Form State
   const [newAptClient, setNewAptClient] = useState('');
@@ -56,11 +67,61 @@ export default function CalendarPage() {
       status: 'confirmed'
     });
 
+    // SHTIMI AUTOMATIK I KLIENTIT
+    const savedClients = localStorage.getItem('salon_clients');
+    const clients = savedClients ? JSON.parse(savedClients) : [];
+    const clientExists = clients.some((c: any) => c.name.toLowerCase() === newAptClient.toLowerCase() || `${c.name} ${c.surname}`.toLowerCase() === newAptClient.toLowerCase());
+    if (!clientExists) {
+      const newClient = {
+        id: Math.random().toString(36).substr(2, 9),
+        name: newAptClient,
+        surname: '',
+        phone: '',
+        email: '',
+        createdAt: new Date().toISOString()
+      };
+      localStorage.setItem('salon_clients', JSON.stringify([...clients, newClient]));
+    }
+
     setIsAppointmentModalOpen(false);
     setNewAptClient('');
     setNewAptService('');
     setNewAptStaff('');
     alert('Termini u shtua me sukses!');
+  };
+
+  const handleDeleteClick = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    setAppointmentToDelete(id);
+    setIsPinModalOpen(true);
+  };
+
+  const handlePinSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (pinInput === '1994' && appointmentToDelete) {
+      await deleteAppointment(appointmentToDelete);
+      setIsPinModalOpen(false);
+      setPinInput('');
+      setPinError(false);
+      setAppointmentToDelete(null);
+    } else {
+      setPinError(true);
+      setPinInput('');
+    }
+  };
+
+  const handleDeleteAllSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (deleteAllPinInput === '1994') {
+      await deleteAllAppointments();
+      setIsDeleteAllPinModalOpen(false);
+      setDeleteAllPinInput('');
+      setDeleteAllPinError(false);
+      alert('Të gjitha terminet u fshinë me sukses!');
+    } else {
+      setDeleteAllPinError(true);
+      setDeleteAllPinInput('');
+    }
   };
 
   return (
@@ -102,17 +163,20 @@ export default function CalendarPage() {
             <Plus size={18} />
             <span className="hidden sm:inline">Termin i Ri</span>
           </button>
-          
-          <button className="bg-white text-stone-600 border border-stone-200 px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-stone-50 transition-colors flex items-center gap-2 shadow-sm" title="Sync with Google Calendar">
-            <CalendarIcon size={18} />
-            <span className="hidden md:inline">Sync</span>
+
+          <button 
+            onClick={() => setIsDeleteAllPinModalOpen(true)}
+            className="p-2 md:p-2.5 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg transition-colors border border-red-200 shadow-sm flex-shrink-0"
+            title="Fshi të gjitha terminet"
+          >
+            <Trash2 size={18} />
           </button>
         </div>
       </header>
 
       {/* Calendar Grid */}
       <div className="flex-1 overflow-auto bg-white border border-stone-200 shadow-sm rounded-b-xl relative mx-2 md:mx-6 mb-6">
-        <div className="min-w-[800px]"> {/* Force minimum width for horizontal scrolling on mobile */}
+        <div className="min-w-[800px]">
           {/* Header Row */}
           <div className="grid grid-cols-[60px_1fr] md:grid-cols-[80px_1fr] sticky top-0 z-20 bg-white border-b border-stone-200 shadow-sm">
             <div className="p-2 md:p-4 border-r border-stone-200 bg-stone-100 flex items-center justify-center font-bold text-stone-500 text-[10px] md:text-sm uppercase tracking-wider">
@@ -201,12 +265,18 @@ export default function CalendarPage() {
                                   key={apt.id}
                                   initial={{ scale: 0.95, opacity: 0 }}
                                   animate={{ scale: 1, opacity: 1 }}
-                                  className="bg-stone-900 text-white p-1.5 md:p-2 rounded-md md:rounded-lg shadow-sm cursor-pointer hover:shadow-md transition-all flex flex-col justify-between border-l-[3px] md:border-l-4 border-stone-400 min-h-[40px] md:min-h-[60px]"
+                                  className="bg-stone-900 text-white p-1.5 md:p-2 rounded-md md:rounded-lg shadow-sm cursor-pointer hover:shadow-md transition-all flex flex-col justify-between border-l-[3px] md:border-l-4 border-stone-400 min-h-[40px] md:min-h-[60px] relative group/apt"
                                 >
                                   <div>
-                                    <div className="font-bold text-[10px] md:text-xs leading-tight mb-0.5 truncate">{apt.client}</div>
+                                    <div className="font-bold text-[10px] md:text-xs leading-tight mb-0.5 truncate pr-4">{apt.client}</div>
                                     <div className="text-[8px] md:text-[10px] text-stone-300 font-medium truncate">{service?.name}</div>
                                   </div>
+                                  <button
+                                    onClick={(e) => handleDeleteClick(e, apt.id)}
+                                    className="absolute top-1 right-1 p-1 bg-red-500/80 text-white rounded opacity-0 group-hover/apt:opacity-100 transition-opacity hover:bg-red-600"
+                                  >
+                                    <Trash2 size={12} />
+                                  </button>
                                 </motion.div>
                               );
                             })}
@@ -247,10 +317,16 @@ export default function CalendarPage() {
                                   key={apt.id}
                                   initial={{ scale: 0.95, opacity: 0 }}
                                   animate={{ scale: 1, opacity: 1 }}
-                                  className="bg-stone-900 text-white p-1 md:p-2 rounded md:rounded-md shadow-sm cursor-pointer hover:shadow-md transition-all border-l-2 border-stone-400 min-h-[36px] md:min-h-[50px]"
+                                  className="bg-stone-900 text-white p-1 md:p-2 rounded md:rounded-md shadow-sm cursor-pointer hover:shadow-md transition-all border-l-2 border-stone-400 min-h-[36px] md:min-h-[50px] relative group/apt"
                                 >
-                                  <div className="font-bold text-[9px] md:text-[11px] leading-tight truncate">{apt.client}</div>
-                                  <div className="text-[8px] md:text-[9px] text-stone-300 truncate">{service?.name} • {staff?.name.split(' ')[0]}</div>
+                                  <div className="font-bold text-[9px] md:text-[11px] leading-tight truncate pr-4">{apt.client}</div>
+                                  <div className="text-[8px] md:text-[9px] text-stone-300 truncate">{service?.name} • {staff?.name?.split(' ')[0]}</div>
+                                  <button
+                                    onClick={(e) => handleDeleteClick(e, apt.id)}
+                                    className="absolute top-1 right-1 p-1 bg-red-500/80 text-white rounded opacity-0 group-hover/apt:opacity-100 transition-opacity hover:bg-red-600"
+                                  >
+                                    <Trash2 size={10} />
+                                  </button>
                                 </motion.div>
                               );
                             })}
@@ -374,6 +450,102 @@ export default function CalendarPage() {
                     Ruaj Terminin
                   </button>
                 </form>
+            </motion.div>
+          </div>
+        )}
+
+        {/* PIN Modal for Deleting Appointment */}
+        {isPinModalOpen && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white rounded-xl shadow-xl max-w-sm w-full overflow-hidden p-6"
+            >
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-bold text-stone-900 flex items-center gap-2">
+                  <Lock size={20} />
+                  Kërkohet Kod Sigurie
+                </h3>
+                <button onClick={() => { setIsPinModalOpen(false); setPinInput(''); setPinError(false); setAppointmentToDelete(null); }} className="text-stone-400 hover:text-stone-600">
+                  <X size={20} />
+                </button>
+              </div>
+              
+              <form onSubmit={handlePinSubmit} className="space-y-4">
+                <p className="text-sm text-stone-600">
+                  Ju lutem shkruani kodin për të fshirë këtë termin.
+                </p>
+                
+                <div>
+                  <input 
+                    type="password" 
+                    autoFocus
+                    value={pinInput}
+                    onChange={e => setPinInput(e.target.value)}
+                    className={`w-full p-3 text-center text-2xl tracking-widest border rounded-lg focus:ring-2 focus:outline-none ${pinError ? 'border-red-500 focus:ring-red-200' : 'border-stone-300 focus:ring-stone-500'}`}
+                    placeholder="••••"
+                    maxLength={4}
+                  />
+                  {pinError && <p className="text-xs text-red-500 mt-1 text-center">Kodi i gabuar. Provoni përsëri.</p>}
+                </div>
+
+                <button 
+                  type="submit"
+                  className="w-full bg-red-600 text-white py-3 rounded-lg font-bold hover:bg-red-700 transition-colors"
+                >
+                  Konfirmo Fshirjen
+                </button>
+              </form>
+            </motion.div>
+          </div>
+        )}
+
+        {/* PIN Modal for Deleting All Appointments */}
+        {isDeleteAllPinModalOpen && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white rounded-xl shadow-xl max-w-sm w-full overflow-hidden p-6"
+            >
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-bold text-red-600 flex items-center gap-2">
+                  <Lock size={20} />
+                  Fshi Të Gjitha Terminet
+                </h3>
+                <button onClick={() => { setIsDeleteAllPinModalOpen(false); setDeleteAllPinInput(''); setDeleteAllPinError(false); }} className="text-stone-400 hover:text-stone-600">
+                  <X size={20} />
+                </button>
+              </div>
+              
+              <form onSubmit={handleDeleteAllSubmit} className="space-y-4">
+                <p className="text-sm text-stone-600">
+                  Ju lutem shkruani kodin për të fshirë <strong className="text-red-600">TË GJITHA</strong> terminet në kalendar. Ky veprim nuk mund të zhbëhet.
+                </p>
+                
+                <div>
+                  <input 
+                    type="password" 
+                    autoFocus
+                    value={deleteAllPinInput}
+                    onChange={e => setDeleteAllPinInput(e.target.value)}
+                    className={`w-full p-3 text-center text-2xl tracking-widest border rounded-lg focus:ring-2 focus:outline-none ${deleteAllPinError ? 'border-red-500 focus:ring-red-200' : 'border-stone-300 focus:ring-stone-500'}`}
+                    placeholder="••••"
+                    maxLength={4}
+                  />
+                  {deleteAllPinError && <p className="text-xs text-red-500 mt-1 text-center">Kodi i gabuar. Provoni përsëri.</p>}
+                </div>
+
+                <button 
+                  type="submit"
+                  className="w-full bg-red-600 text-white py-3 rounded-lg font-bold hover:bg-red-700 transition-colors"
+                >
+                  Konfirmo Fshirjen e Plotë
+                </button>
+              </form>
             </motion.div>
           </div>
         )}
