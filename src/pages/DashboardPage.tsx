@@ -22,47 +22,40 @@ const data = [
 export default function DashboardPage() {
   const { addExpense } = useExpenses();
   const { appointments, addAppointment, isSlotBooked } = useAppointments();
-  const { services: SERVICES, staff: STAFF } = useData();
+  const { services: SERVICES, staff: STAFF, clients, addClient } = useData();
 
   const [isAppointmentModalOpen, setIsAppointmentModalOpen] = useState(false);
   const [isClientModalOpen, setIsClientModalOpen] = useState(false);
   const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
   
-  // PIN and Clear Stats State
   const [isPinModalOpen, setIsPinModalOpen] = useState(false);
   const [pinInput, setPinInput] = useState('');
   const [pinError, setPinError] = useState(false);
-  const [isDailyStatsCleared, setIsDailyStatsCleared] = useState(false);
-
-  // Client State
-  const [clients, setClients] = useState<any[]>(() => {
-    const saved = localStorage.getItem('salon_clients');
-    return saved ? JSON.parse(saved) : [];
+  const [clearTimestamp, setClearTimestamp] = useState<string | null>(() => {
+    const saved = localStorage.getItem('salon_daily_stats_clear_timestamp');
+    const clearedDate = localStorage.getItem('salon_daily_stats_cleared_date');
+    if (clearedDate === format(new Date(), 'yyyy-MM-dd')) {
+      return saved;
+    }
+    return null;
   });
+
   const [newClientName, setNewClientName] = useState('');
   const [newClientSurname, setNewClientSurname] = useState('');
   const [newClientPhone, setNewClientPhone] = useState('');
   const [newClientEmail, setNewClientEmail] = useState('');
-
-  // Save clients to local storage
-  useEffect(() => {
-    localStorage.setItem('salon_clients', JSON.stringify(clients));
-  }, [clients]);
 
   const handleAddClient = () => {
     if (!newClientName || !newClientSurname) {
       alert('Ju lutem plotësoni emrin dhe mbiemrin!');
       return;
     }
-    const newClient = {
-      id: Math.random().toString(36).substr(2, 9),
+    addClient({
       name: newClientName,
       surname: newClientSurname,
       phone: newClientPhone,
       email: newClientEmail,
-      createdAt: new Date().toISOString()
-    };
-    setClients(prev => [...prev, newClient]);
+    });
     setIsClientModalOpen(false);
     setNewClientName('');
     setNewClientSurname('');
@@ -71,27 +64,25 @@ export default function DashboardPage() {
     alert('Klienti u regjistrua me sukses!');
   };
 
-  // Check if stats were cleared today on mount
   useEffect(() => {
     const clearedDate = localStorage.getItem('salon_daily_stats_cleared_date');
-    if (clearedDate === format(new Date(), 'yyyy-MM-dd')) {
-      setIsDailyStatsCleared(true);
+    if (clearedDate !== format(new Date(), 'yyyy-MM-dd')) {
+      localStorage.removeItem('salon_daily_stats_clear_timestamp');
+      localStorage.removeItem('salon_daily_stats_cleared_date');
+      setClearTimestamp(null);
     }
   }, []);
 
-  // Expense State
   const [expenseCategory, setExpenseCategory] = useState<ExpenseCategory>('products');
   const [expenseAmount, setExpenseAmount] = useState('');
   const [expenseDescription, setExpenseDescription] = useState('');
 
-  // Appointment State
   const [newAptClient, setNewAptClient] = useState('');
   const [newAptService, setNewAptService] = useState('');
   const [newAptStaff, setNewAptStaff] = useState('');
   const [newAptDate, setNewAptDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [newAptTime, setNewAptTime] = useState('');
 
-  // Generate time slots (09:00 - 20:00)
   const timeSlots = Array.from({ length: 12 }, (_, i) => {
     const hour = i + 9;
     return `${hour.toString().padStart(2, '0')}:00`;
@@ -133,19 +124,12 @@ export default function DashboardPage() {
       status: 'booked'
     });
 
-    // SHTIMI AUTOMATIK I KLIENTIT
-    const clientExists = clients.some(c => c.name.toLowerCase() === newAptClient.toLowerCase() || `${c.name} ${c.surname}`.toLowerCase() === newAptClient.toLowerCase());
-    if (!clientExists) {
-      const newClient = {
-        id: Math.random().toString(36).substr(2, 9),
-        name: newAptClient,
-        surname: '',
-        phone: '',
-        email: '',
-        createdAt: new Date().toISOString()
-      };
-      setClients(prev => [...prev, newClient]);
-    }
+    addClient({
+      name: newAptClient,
+      surname: '',
+      phone: '',
+      email: '',
+    });
 
     setIsAppointmentModalOpen(false);
     setNewAptClient('');
@@ -158,7 +142,9 @@ export default function DashboardPage() {
   const handlePinSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (pinInput === '1994') {
-      setIsDailyStatsCleared(true);
+      const now = new Date().toISOString();
+      setClearTimestamp(now);
+      localStorage.setItem('salon_daily_stats_clear_timestamp', now);
       localStorage.setItem('salon_daily_stats_cleared_date', format(new Date(), 'yyyy-MM-dd'));
       setIsPinModalOpen(false);
       setPinInput('');
@@ -169,21 +155,26 @@ export default function DashboardPage() {
     }
   };
 
-  // Filter today's appointments for the table
   const todaysAppointments = appointments.filter(apt => isSameDay(new Date(apt.date), new Date()));
   
-  // LLOGARITJA E TË ARHURAVE (Përfshin të gjitha përveç atyre të anuluara)
-  const todaysRevenue = todaysAppointments.reduce((sum, apt) => {
+  const filteredAppointments = clearTimestamp 
+    ? todaysAppointments.filter(apt => new Date(apt.createdAt || apt.date) > new Date(clearTimestamp))
+    : todaysAppointments;
+
+  const todaysRevenue = filteredAppointments.reduce((sum, apt) => {
     if (apt.status === 'cancelled') return sum;
     const service = SERVICES.find(s => s.id === apt.serviceId);
     return sum + (service?.price || 0);
   }, 0);
 
-  // Stats values based on clear state
   const todaysClients = clients.filter(c => isSameDay(new Date(c.createdAt), new Date()));
-  const displayRevenue = isDailyStatsCleared ? '€0' : `€${todaysRevenue}`;
-  const displayAppointments = isDailyStatsCleared ? '0' : todaysAppointments.length.toString();
-  const displayNewClients = isDailyStatsCleared ? '0' : todaysClients.length.toString();
+  const filteredClients = clearTimestamp
+    ? todaysClients.filter(c => new Date(c.createdAt) > new Date(clearTimestamp))
+    : todaysClients;
+
+  const displayRevenue = `€${todaysRevenue}`;
+  const displayAppointments = filteredAppointments.length.toString();
+  const displayNewClients = filteredClients.length.toString();
 
   return (
     <div className="space-y-8 relative">
@@ -207,27 +198,26 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard 
           title="Të Ardhurat Sot" 
           value={displayRevenue} 
           icon={<DollarSign size={24} />} 
-          trend={isDailyStatsCleared ? "0%" : "+12%"}
+          trend={clearTimestamp ? "0%" : "+12%"}
           color="bg-stone-900 text-white"
         />
         <StatCard 
           title="Termine Aktive" 
           value={displayAppointments} 
           icon={<Calendar size={24} />} 
-          trend={isDailyStatsCleared ? "0" : "+4"}
+          trend={clearTimestamp ? "0" : "+4"}
           color="bg-white text-stone-900 border border-stone-200"
         />
         <StatCard 
           title="Klientë të Rinj" 
           value={displayNewClients} 
           icon={<Users size={24} />} 
-          trend={isDailyStatsCleared ? "0" : "+2"}
+          trend={clearTimestamp ? "0" : "+2"}
           color="bg-white text-stone-900 border border-stone-200"
         />
         <StatCard 
@@ -239,9 +229,7 @@ export default function DashboardPage() {
         />
       </div>
 
-      {/* Main Content Split */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Today's Appointments List (Staff View) */}
         <div className="lg:col-span-2 bg-white border border-stone-200 rounded-xl shadow-sm overflow-hidden">
           <div className="p-6 border-b border-stone-100 bg-stone-50/50">
             <h2 className="text-xl font-serif font-bold flex items-center gap-2">
@@ -316,7 +304,6 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Quick Actions & Revenue Chart */}
         <div className="space-y-8">
           <div className="bg-stone-900 text-white rounded-xl p-6 shadow-lg">
             <h2 className="text-lg font-serif font-bold mb-4">Aksione të Shpejta</h2>
@@ -369,7 +356,6 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Modals */}
       <AnimatePresence>
         {isExpenseModalOpen && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -494,7 +480,6 @@ export default function DashboardPage() {
                   />
                 </div>
                 
-                {/* Time Slot Picker */}
                 <div>
                   <label className="block text-sm font-medium text-stone-700 mb-2">Ora (Terminat e Zëne me të Kuqe)</label>
                   <div className="grid grid-cols-4 gap-2">
@@ -607,7 +592,6 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* PIN Modal for Clearing Stats */}
         {isPinModalOpen && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
             <motion.div 
