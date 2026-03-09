@@ -133,6 +133,20 @@ export default function DashboardPage() {
       status: 'booked'
     });
 
+    // SHTIMI AUTOMATIK I KLIENTIT
+    const clientExists = clients.some(c => c.name.toLowerCase() === newAptClient.toLowerCase() || `${c.name} ${c.surname}`.toLowerCase() === newAptClient.toLowerCase());
+    if (!clientExists) {
+      const newClient = {
+        id: Math.random().toString(36).substr(2, 9),
+        name: newAptClient,
+        surname: '',
+        phone: '',
+        email: '',
+        createdAt: new Date().toISOString()
+      };
+      setClients(prev => [...prev, newClient]);
+    }
+
     setIsAppointmentModalOpen(false);
     setNewAptClient('');
     setNewAptService('');
@@ -156,16 +170,17 @@ export default function DashboardPage() {
   };
 
   // Filter today's appointments for the table
-  const todaysAppointments = isDailyStatsCleared ? [] : appointments.filter(apt => isSameDay(new Date(apt.date), new Date()));
+  const todaysAppointments = appointments.filter(apt => isSameDay(new Date(apt.date), new Date()));
   
-  // Calculate real revenue from today's appointments
+  // LLOGARITJA E TË ARHURAVE (Përfshin të gjitha përveç atyre të anuluara)
   const todaysRevenue = todaysAppointments.reduce((sum, apt) => {
+    if (apt.status === 'cancelled') return sum;
     const service = SERVICES.find(s => s.id === apt.serviceId);
     return sum + (service?.price || 0);
   }, 0);
 
   // Stats values based on clear state
-  const todaysClients = isDailyStatsCleared ? [] : clients.filter(c => isSameDay(new Date(c.createdAt), new Date()));
+  const todaysClients = clients.filter(c => isSameDay(new Date(c.createdAt), new Date()));
   const displayRevenue = isDailyStatsCleared ? '€0' : `€${todaysRevenue}`;
   const displayAppointments = isDailyStatsCleared ? '0' : todaysAppointments.length.toString();
   const displayNewClients = isDailyStatsCleared ? '0' : todaysClients.length.toString();
