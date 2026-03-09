@@ -4,22 +4,7 @@ import { sq } from 'date-fns/locale';
 import { DollarSign, Filter, Calendar as CalendarIcon, Download, Trash2, AlertTriangle, X, Plus, Lock } from 'lucide-react';
 import { useExpenses, ExpenseCategory } from '../lib/ExpenseContext';
 import { motion, AnimatePresence } from 'motion/react';
-const StatCard = ({ title, value, icon: Icon, trend }: any) => (
-  <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-    <div className="flex items-center justify-between mb-4">
-      <h3 className="text-gray-500 text-sm font-medium">{title}</h3>
-      <div className="p-2 bg-indigo-50 rounded-lg">
-        <Icon className="w-5 h-5 text-indigo-600" />
-      </div>
-    </div>
-    <p className="text-2xl font-bold text-gray-900">{value}</p>
-    {trend && (
-      <p className={`text-sm mt-2 ${trend.isPositive ? 'text-green-600' : 'text-red-600'}`}>
-        {trend.isPositive ? '+' : ''}{trend.value}% nga muaji i kaluar
-      </p>
-    )}
-  </div>
-);
+
 const MONTHS = [
   { value: 'all', label: 'Të gjithë muajt' },
   { value: '0', label: 'Janar' },
@@ -45,6 +30,7 @@ export default function ExpensesPage() {
   
   // PIN Protection State
   const [isPinModalOpen, setIsPinModalOpen] = useState(false);
+  const [pinAction, setPinAction] = useState<'unlock_salaries' | 'manage_deletion' | null>(null);
   const [pinInput, setPinInput] = useState('');
   const [isSalariesUnlocked, setIsSalariesUnlocked] = useState(false);
   const [pinError, setPinError] = useState(false);
@@ -75,6 +61,7 @@ export default function ExpensesPage() {
 
   const handleCategoryChange = (category: 'all' | 'products' | 'food' | 'salaries') => {
     if (category === 'salaries' && !isSalariesUnlocked) {
+      setPinAction('unlock_salaries');
       setIsPinModalOpen(true);
     } else {
       setSelectedCategory(category);
@@ -84,15 +71,89 @@ export default function ExpensesPage() {
   const handlePinSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (pinInput === '1994') {
-      setIsSalariesUnlocked(true);
-      setSelectedCategory('salaries');
+      if (pinAction === 'unlock_salaries') {
+        setIsSalariesUnlocked(true);
+        setSelectedCategory('salaries');
+      } else if (pinAction === 'manage_deletion') {
+        setIsDeleteModalOpen(true);
+      }
       setIsPinModalOpen(false);
       setPinInput('');
       setPinError(false);
+      setPinAction(null);
     } else {
       setPinError(true);
       setPinInput('');
     }
+  };
+
+  const handleExportReport = () => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+
+    const dateStr = format(new Date(), 'dd/MM/yyyy HH:mm');
+    const periodStr = selectedMonth === 'all' ? 'Të gjithë muajt' : MONTHS.find(m => m.value === selectedMonth)?.label;
+    const categoryStr = selectedCategory === 'all' ? 'Të gjitha' : selectedCategory === 'products' ? 'Produkte' : selectedCategory === 'food' ? 'Ushqim' : 'Paga';
+
+    const html = `
+      <html>
+        <head>
+          <title>Raporti i Shpenzimeve - ${dateStr}</title>
+          <style>
+            body { font-family: sans-serif; padding: 40px; color: #1c1917; }
+            h1 { font-family: serif; font-size: 24px; margin-bottom: 8px; }
+            .meta { font-size: 14px; color: #78716c; margin-bottom: 32px; border-bottom: 1px solid #e7e5e4; padding-bottom: 16px; }
+            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+            th { text-align: left; background: #f5f5f4; padding: 12px; font-size: 12px; text-transform: uppercase; border-bottom: 2px solid #e7e5e4; }
+            td { padding: 12px; border-bottom: 1px solid #e7e5e4; font-size: 14px; }
+            .total { margin-top: 32px; text-align: right; font-size: 18px; font-weight: bold; }
+            .footer { margin-top: 64px; font-size: 12px; color: #a8a29e; text-align: center; }
+            @media print {
+              .no-print { display: none; }
+            }
+          </style>
+        </head>
+        <body>
+          <h1>Raporti i Shpenzimeve</h1>
+          <div class="meta">
+            Gjeneruar më: ${dateStr}<br>
+            Periudha: ${periodStr}<br>
+            Kategoria: ${categoryStr}
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Data</th>
+                <th>Kategoria</th>
+                <th>Përshkrimi</th>
+                <th style="text-align: right;">Shuma</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${filteredExpenses.map(exp => `
+                <tr>
+                  <td>${format(new Date(exp.date), 'dd/MM/yyyy')}</td>
+                  <td>${exp.category === 'products' ? 'Produkte' : exp.category === 'food' ? 'Ushqim' : 'Paga'}</td>
+                  <td>${exp.description}</td>
+                  <td style="text-align: right;">€${exp.amount.toFixed(2)}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+          <div class="total">Totali: €${totalExpenses.toFixed(2)}</div>
+          <div class="footer">Ky raport është gjeneruar automatikisht nga Sistemi i Menaxhimit të Sallonit.</div>
+          <script>
+            window.onload = () => {
+              window.print();
+              // window.close(); // Optional: close window after printing
+            };
+          </script>
+        </body>
+      </html>
+    `;
+
+    printWindow.document.write(html);
+    printWindow.document.close();
   };
 
   const handleAddExpense = (e: React.FormEvent) => {
@@ -153,13 +214,19 @@ export default function ExpensesPage() {
             Shto Shpenzim
           </button>
           <button 
-            onClick={() => setIsDeleteModalOpen(true)}
+            onClick={() => {
+              setPinAction('manage_deletion');
+              setIsPinModalOpen(true);
+            }}
             className="flex items-center gap-2 px-4 py-2 bg-red-50 border border-red-200 rounded-lg text-sm font-medium text-red-600 hover:bg-red-100 transition-colors"
           >
             <Trash2 size={18} />
             Menaxho Fshirjen
           </button>
-          <button className="flex items-center gap-2 px-4 py-2 bg-white border border-stone-200 rounded-lg text-sm font-medium text-stone-600 hover:bg-stone-50">
+          <button 
+            onClick={handleExportReport}
+            className="flex items-center gap-2 px-4 py-2 bg-white border border-stone-200 rounded-lg text-sm font-medium text-stone-600 hover:bg-stone-50"
+          >
             <Download size={18} />
             Eksporto Raportin
           </button>
@@ -389,7 +456,9 @@ export default function ExpensesPage() {
               
               <form onSubmit={handlePinSubmit} className="space-y-4">
                 <p className="text-sm text-stone-600">
-                  Ju lutem shkruani kodin për të aksesuar kategorinë e Pagave.
+                  {pinAction === 'unlock_salaries' 
+                    ? 'Ju lutem shkruani kodin për të aksesuar kategorinë e Pagave.'
+                    : 'Ju lutem shkruani kodin për të hapur menunë e fshirjes.'}
                 </p>
                 
                 <div>
