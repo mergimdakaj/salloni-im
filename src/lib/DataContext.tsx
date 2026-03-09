@@ -26,11 +26,13 @@ export interface Staff {
 interface DataContextType {
   services: Service[];
   staff: Staff[];
+  clients: any[];
   addService: (service: Omit<Service, 'id'>) => void;
   updateService: (id: string, updates: Partial<Service>) => void;
   addStaff: (staff: Omit<Staff, 'id'>) => void;
   updateStaff: (id: string, updates: Partial<Staff>) => void;
   deleteStaff: (id: string) => void;
+  addClient: (client: any) => void;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -42,9 +44,13 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   });
 
   const [staff, setStaff] = useState<Staff[]>(() => {
-    // Changed key to v3 to force refresh of staff data (including new image paths)
     const saved = localStorage.getItem('salon_staff_v3');
     return saved ? JSON.parse(saved) : INITIAL_STAFF;
+  });
+
+  const [clients, setClients] = useState<any[]>(() => {
+    const saved = localStorage.getItem('salon_clients');
+    return saved ? JSON.parse(saved) : [];
   });
 
   useEffect(() => {
@@ -54,6 +60,10 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     localStorage.setItem('salon_staff_v3', JSON.stringify(staff));
   }, [staff]);
+
+  useEffect(() => {
+    localStorage.setItem('salon_clients', JSON.stringify(clients));
+  }, [clients]);
 
   const addService = (newService: Omit<Service, 'id'>) => {
     const service: Service = {
@@ -83,8 +93,23 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     setStaff(prev => prev.filter(s => s.id !== id));
   };
 
+  const addClient = (client: any) => {
+    setClients(prev => {
+      const exists = prev.some(c => 
+        c.name.toLowerCase() === client.name.toLowerCase() && 
+        (client.surname ? c.surname.toLowerCase() === client.surname.toLowerCase() : true)
+      );
+      if (exists) return prev;
+      return [...prev, { 
+        ...client, 
+        id: client.id || Math.random().toString(36).substr(2, 9), 
+        createdAt: client.createdAt || new Date().toISOString() 
+      }];
+    });
+  };
+
   return (
-    <DataContext.Provider value={{ services, staff, addService, updateService, addStaff, updateStaff, deleteStaff }}>
+    <DataContext.Provider value={{ services, staff, clients, addService, updateService, addStaff, updateStaff, deleteStaff, addClient }}>
       {children}
     </DataContext.Provider>
   );
